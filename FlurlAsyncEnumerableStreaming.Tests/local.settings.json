@@ -1,0 +1,6 @@
+{
+  "Values": {
+    "LargeFileDownloadUrl": "{{DROPBOX FILE URL}}",
+    "TargetDownloadPath": "{{FULLY QUALIFIED LOCAL FILE PATH}}"
+  }
+}

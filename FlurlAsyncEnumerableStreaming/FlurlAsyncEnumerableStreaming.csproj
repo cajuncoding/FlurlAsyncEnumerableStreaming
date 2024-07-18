@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+	  <!--NOTE: Just as with the base Flurl.Http.Newtonsoft library and Microsofts recommendation we now support net6 for the latest projects, but also netstandard2.1 which has proper Async streaming support. -->
+	  <TargetFrameworks>netstandard2.1;net6.0;</TargetFrameworks>
+	  <Version>1.0.0</Version>
+	  <AssemblyVersion>1.0.0</AssemblyVersion>
+	  <FileVersion>1.0.0</FileVersion>
+	  <Authors>BBernard / CajunCoding</Authors>
+	  <Company>CajunCoding</Company>
+	  <Description>Async Enumerable Byte Streaming extensions for Flurl.Http -- lightweight, simplified, asynchronous, fluent support for streaming byte array results from Http requests using the amazing Flurl Http library!</Description>
+	  <Copyright>Copyright © 2024</Copyright>
+	  <PackageLicenseExpression>MIT</PackageLicenseExpression>
+	  <PackageProjectUrl>https://github.com/cajuncoding/FlurlAsyncEnumerableByteStreams</PackageProjectUrl>
+	  <RepositoryUrl>https://github.com/cajuncoding/FlurlAsyncEnumerableByteStreams</RepositoryUrl>
+	  <PackageReleaseNotes>
+		  Release Notes:
+		  - Initial Release
+	  </PackageReleaseNotes>
+	  <PackageTags>flurl, bytes, bytearray, stream, memorystream, binary, file, download, asyncenumerable, rest, http, http client, json</PackageTags>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Flurl.Http" Version="4.0.0" />
+  </ItemGroup>
+
+</Project>
