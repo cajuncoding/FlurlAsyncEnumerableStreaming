@@ -1,7 +1,6 @@
 ﻿using System.Diagnostics;
 using System.IO;
 using System.Threading.Tasks;
-using Flurl;
 using Flurl.Http;
 using FlurlAsyncEnumerableStreaming.Tests.TestConfig;
 using FlurlGraphQL.Tests;
@@ -13,6 +12,36 @@ namespace FlurlAsyncEnumerableStreaming
     public class TestAsyncEnumerableByteStreams : BaseTestCase
     {
         public TestContext TestContext { get; set; }
+
+        [TestMethod]
+        public async Task TestRealWorldExample()
+        {
+            var tempDirectory = TestsConfiguration.TargetDownloadPath;
+            var downloadUrl = TestsConfiguration.LargeFileDownloadUrl;
+
+            var fileInfo = new FileInfo(Path.Combine(tempDirectory, $"GetEnumeratedBytesBytes_{Path.GetFileName(downloadUrl.Path)}"));
+            if (fileInfo.Exists) fileInfo.Delete();
+
+            var downloadTimer = Stopwatch.StartNew();
+            var initialMemoryConsumption = GetCurrentMemoryUsage();
+            
+            await using var fileStream = fileInfo.OpenWrite();
+            await foreach (var byteChunk in downloadUrl.GetStreamAsAsyncEnumerable())
+                await fileStream.WriteAsync(byteChunk);
+
+            downloadTimer.Stop();
+            var finalMemoryConsumption = GetCurrentMemoryUsage();
+            
+            fileInfo.Refresh();
+
+            TestContext.WriteLine(string.Empty);
+            TestContext.WriteLine("---- Enumerate All Bytes ----");
+            TestContext.WriteLine($"Downloaded in [{downloadTimer.Elapsed.TotalSeconds}]");
+            TestContext.WriteLine($"Size = [{fileInfo.Length}], [{(fileInfo.Length / 1024 / 1024)} MB]");
+            TestContext.WriteLine($"Memory Usage = [{finalMemoryConsumption - initialMemoryConsumption}] MB");
+
+            Process.Start("explorer.exe", $"/open, \"{tempDirectory}\"");
+        }
 
         [TestMethod]
         public async Task TestDownloadOfLargeFilesAsync()
