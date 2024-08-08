@@ -11,6 +11,8 @@ namespace FlurlAsyncEnumerableStreaming
     [TestClass]
     public class TestAsyncEnumerableByteStreams : BaseTestCase
     {
+        private const int BytesPerMegabyte = 1024 * 1024;
+
         public TestContext TestContext { get; set; }
 
         [TestMethod]
@@ -24,21 +26,82 @@ namespace FlurlAsyncEnumerableStreaming
 
             var downloadTimer = Stopwatch.StartNew();
             var initialMemoryConsumption = GetCurrentMemoryUsage();
-            
-            await using var fileStream = fileInfo.OpenWrite();
-            await foreach (var byteChunk in downloadUrl.GetStreamAsAsyncEnumerable())
-                await fileStream.WriteAsync(byteChunk);
+
+            await using var asyncEnumerableStream = downloadUrl.GetStreamAsAsyncEnumerable();
+            var contentHeaders = await asyncEnumerableStream.GetHeadersAsync();
+
+            var byteSize = 0L;
+            await using (var fileStream = fileInfo.OpenWrite())
+            {
+                await foreach (var byteChunk in asyncEnumerableStream)
+                {
+                    byteSize += byteChunk.Length;
+                    await fileStream.WriteAsync(byteChunk);
+                }
+            }
 
             downloadTimer.Stop();
             var finalMemoryConsumption = GetCurrentMemoryUsage();
-            
+
+            Assert.AreEqual(contentHeaders.ContentLength, byteSize);
+
             fileInfo.Refresh();
 
             TestContext.WriteLine(string.Empty);
             TestContext.WriteLine("---- Enumerate All Bytes ----");
             TestContext.WriteLine($"Downloaded in [{downloadTimer.Elapsed.TotalSeconds}]");
-            TestContext.WriteLine($"Size = [{fileInfo.Length}], [{(fileInfo.Length / 1024 / 1024)} MB]");
+            TestContext.WriteLine($"Content-Length = [{contentHeaders.ContentLength}]");
+            TestContext.WriteLine($"Content-Type = [{contentHeaders.ContentType}]");
+            TestContext.WriteLine($"Actual Size = [{byteSize}], [{(byteSize / BytesPerMegabyte)} MB]");
+            TestContext.WriteLine($"Filesystem Size = [{fileInfo.Length}], [{(fileInfo.Length / BytesPerMegabyte)} MB]");
             TestContext.WriteLine($"Memory Usage = [{finalMemoryConsumption - initialMemoryConsumption}] MB");
+
+            Process.Start("explorer.exe", $"/open, \"{tempDirectory}\"");
+        }
+
+        [TestMethod]
+        public async Task TestMultipleEnumerations()
+        {
+            var tempDirectory = TestsConfiguration.TargetDownloadPath;
+            var downloadUrl = TestsConfiguration.SmallFileDownloadUrl;
+
+            await using var asyncEnumerableStream = downloadUrl.GetStreamAsAsyncEnumerable();
+
+            for (var i = 0; i < 2; i++)
+            {
+                //Stream should never be open when first instantiated or after an iteration (e.g. Disposal)!
+                Assert.IsFalse(asyncEnumerableStream.IsStreamOpen);
+
+                var contentHeaders = await asyncEnumerableStream.GetHeadersAsync();
+                Assert.IsTrue(asyncEnumerableStream.IsStreamOpen);
+
+                var fileInfo = new FileInfo(Path.Combine(tempDirectory, $"GetEnumeratedBytesBytes_{Path.GetFileName(downloadUrl.Path)}"));
+                if (fileInfo.Exists) fileInfo.Delete();
+
+                var byteSize = 0L;
+                await using (var fileStream = fileInfo.OpenWrite())
+                {
+                    await foreach (var byteChunk in asyncEnumerableStream)
+                    {
+                        Assert.IsTrue(asyncEnumerableStream.IsStreamOpen);
+
+                        byteSize += byteChunk.Length;
+                        await fileStream.WriteAsync(byteChunk);
+                    }
+                }
+
+                Assert.IsFalse(asyncEnumerableStream.IsStreamOpen);
+                Assert.AreEqual(contentHeaders.ContentLength, byteSize);
+
+                fileInfo.Refresh();
+
+                TestContext.WriteLine(string.Empty);
+                TestContext.WriteLine($"---- Iteration [{i}] ----");
+                TestContext.WriteLine($"Content-Length = [{contentHeaders.ContentLength}]");
+                TestContext.WriteLine($"Content-Type = [{contentHeaders.ContentType}]");
+                TestContext.WriteLine($"Actual Size = [{byteSize}], [{(byteSize / BytesPerMegabyte)} MB]");
+                TestContext.WriteLine($"Filesystem Size = [{fileInfo.Length}], [{(fileInfo.Length / BytesPerMegabyte)} MB]");
+            }
 
             Process.Start("explorer.exe", $"/open, \"{tempDirectory}\"");
         }
@@ -65,13 +128,13 @@ namespace FlurlAsyncEnumerableStreaming
 
             TestContext.WriteLine("---- Get All Bytes ----");
             TestContext.WriteLine($"Downloaded in [{downloadTimer.Elapsed.TotalSeconds}]");
-            TestContext.WriteLine($"Size = [{fullRequestBytes.Length}], [{(fullRequestBytes.Length / 1024 / 1024)} MB]");
+            TestContext.WriteLine($"Size = [{fullRequestBytes.Length}], [{(fullRequestBytes.Length / BytesPerMegabyte)} MB]");
             //await File.WriteAllBytesAsync(Path.Combine(tempDirectory, $"GetFullBytes_{Path.GetFileName(url.Path)}"), fullRequestBytes);
 
             TestContext.WriteLine(string.Empty);
             TestContext.WriteLine("---- Enumerate All Bytes ----");
             TestContext.WriteLine($"Downloaded in [{downloadTimer.Elapsed.TotalSeconds}]");
-            TestContext.WriteLine($"Size = [{fullRequestBytes.Length}], [{(fullRequestBytes.Length / 1024 / 1024)} MB]");
+            TestContext.WriteLine($"Size = [{fullRequestBytes.Length}], [{(fullRequestBytes.Length / BytesPerMegabyte)} MB]");
             //await File.WriteAllBytesAsync(Path.Combine(tempDirectory, $"GetEnumeratedBytesBytes_{Path.GetFileName(url.Path)}"), enumeratedRequestBytes);
 
             //Process.Start("explorer.exe", $"/open, \"{tempDirectory}\"");
@@ -116,10 +179,8 @@ namespace FlurlAsyncEnumerableStreaming
 
         private decimal GetCurrentMemoryUsage()
         {
-            const int BytesToMegabytes = (1024 * 1024);
-
             using Process proc = Process.GetCurrentProcess();
-            return (decimal)proc.PrivateMemorySize64 / BytesToMegabytes;
+            return (decimal)proc.PrivateMemorySize64 / BytesPerMegabyte;
         }
     }
 }

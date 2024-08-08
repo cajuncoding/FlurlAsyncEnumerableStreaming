@@ -7,7 +7,11 @@ namespace FlurlAsyncEnumerableStreaming.Tests.TestConfig
     {
         public static bool IsInitialized { get; private set; } = false;
 
-        public static Url LargeFileDownloadUrl => GetConfigValue(nameof(LargeFileDownloadUrl))
+        public static Url LargeFileDownloadUrl => GetDropboxDownloadUrl(nameof(LargeFileDownloadUrl));
+
+        public static Url SmallFileDownloadUrl => GetDropboxDownloadUrl(nameof(SmallFileDownloadUrl));
+
+        private static Url GetDropboxDownloadUrl(string name) => GetConfigValue(name)
             .RemoveQueryParam("dl")
             .AppendQueryParam("raw", 1);
 

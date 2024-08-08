@@ -17,8 +17,12 @@
 		  Release Notes:
 		  - Initial Release
 	  </PackageReleaseNotes>
-	  <PackageTags>flurl, bytes, bytearray, stream, memorystream, binary, file, download, asyncenumerable, rest, http, http client, json</PackageTags>
+	  <PackageTags>flurl, bytes, bytearray, stream, async, streaming, memorystream, filestream, binary, file, download, asyncenumerable, asyncenumerator, rest, http, httpclient, json</PackageTags>
   </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="..\README.md" Link="README.md" />
+  </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="Flurl.Http" Version="4.0.0" />
